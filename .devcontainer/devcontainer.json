@@ -1,0 +1,19 @@
+{
+    "name": "Prostate AI Service",
+    "dockerComposeFile": [
+        "../docker-compose.yml"
+    ],
+    "service": "backend",
+    "workspaceFolder": "/app",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "prisma.prisma",
+                "ms-vscode.vscode-typescript-next"
+            ]
+        }
+    },
+    // THIS AUTOMATES EVERYTHING FOR TEAM CONSISTENCY
+    "postCreateCommand": "npm install && npx prisma generate",
+    "remoteUser": "root"
+}

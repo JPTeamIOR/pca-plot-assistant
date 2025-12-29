@@ -1,0 +1,16 @@
+services:
+  backend:
+    build: .
+    container_name: pca_plot_assistant
+    volumes:
+      - .:/app
+      - /app/node_modules # Protects modules installed inside the container
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      # Use env variables to connect to external DB (host).
+      - DATABASE_URL=postgresql://${PSQL_USER}:${PSQL_PASSWORD}@${PSQL_HOSTNAME}:${PSQL_LOCAL_PORT}/${PSQL_DBNAME}?schema=public
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

@@ -1,0 +1,471 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model config {
+  key    String  @db.VarChar
+  subkey String  @db.VarChar
+  value  String?
+
+  @@id([key, subkey])
+}
+
+model datasets {
+  id          Int       @id @default(autoincrement())
+  name        String    @db.VarChar
+  description String?
+  samples     samples[]
+}
+
+model experiments {
+  id                     Int                      @id @default(autoincrement())
+  name                   String                   @db.VarChar
+  plumber_id             String?                  @db.VarChar
+  status                 String?                  @db.VarChar
+  type                   String                   @db.VarChar
+  created_at             DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime                 @default(now()) @db.Timestamptz(6)
+  user_id                String                   @db.VarChar
+  results                Json?
+  params                 Json?
+  users                  users                    @relation(fields: [user_id], references: [uid], onDelete: Cascade, map: "experiments_fk_users_id")
+  singlecell_experiments singlecell_experiments[]
+}
+
+model files {
+  name        String  @unique(map: "files_unique_name") @db.VarChar
+  disk_name   String  @id @db.VarChar
+  description String?
+}
+
+model fmetadata {
+  value           Int?          @default(0)
+  fmetadatakey_id Int
+  sample_id       Int
+  fmetadatakeys   fmetadatakeys @relation(fields: [fmetadatakey_id], references: [id], onDelete: Cascade, map: "fmetadata_fk_fmetadatakeys_id")
+  samples         samples       @relation(fields: [sample_id], references: [id], onDelete: Cascade, map: "fmetadata_fk_samples_id")
+
+  @@id([fmetadatakey_id, sample_id])
+}
+
+model fmetadatakeys {
+  id          Int         @id @default(autoincrement())
+  name        String      @unique(map: "fmetadatakeys_unique_name") @db.VarChar
+  description String?
+  fmetadata   fmetadata[]
+}
+
+model gc_txi_data {
+  gene_id   Int
+  sample_id Int
+  abundance Decimal? @db.Decimal(12, 6)
+  counts    Decimal? @db.Decimal(11, 3)
+  length    Decimal? @db.Decimal(17, 11)
+  genes     genes    @relation(fields: [gene_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "gc_txi_data_fk_gene_id")
+  samples   samples  @relation(fields: [sample_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "gc_txi_data_fk_sample_id")
+
+  @@id([gene_id, sample_id])
+}
+
+model gene_fusions {
+  id                                      Int                   @id @default(autoincrement())
+  junction_read_count                     Int
+  spanning_frag_count                     Int
+  left_gene_id                            Int
+  left_chromosome                         String                @db.VarChar(50)
+  left_pos                                Int
+  left_strand                             String                @db.VarChar(1)
+  right_gene_id                           Int
+  right_chromosome                        String                @db.VarChar(50)
+  right_pos                               Int
+  right_strand                            String                @db.VarChar(1)
+  known_type                              Boolean
+  ffpm                                    Float?
+  left_break_entropy                      Float?
+  right_break_entropy                     Float?
+  annots                                  String?
+  genes_gene_fusions_left_gene_idTogenes  genes                 @relation("gene_fusions_left_gene_idTogenes", fields: [left_gene_id], references: [id], onDelete: Cascade)
+  genes_gene_fusions_right_gene_idTogenes genes                 @relation("gene_fusions_right_gene_idTogenes", fields: [right_gene_id], references: [id], onDelete: Cascade)
+  sample_gene_fusions                     sample_gene_fusions[]
+
+  @@unique([left_gene_id, left_chromosome, left_pos, left_strand, right_gene_id, right_chromosome, right_pos, right_strand], map: "uq_gene_fusions_breakpoints")
+}
+
+model genes {
+  id                                             Int                                @id @default(autoincrement())
+  name                                           String                             @db.VarChar
+  ensembl                                        String?                            @unique(map: "genes_unique_ensembl") @db.VarChar
+  corr                                           Decimal                            @default(0) @db.Decimal(8, 4)
+  stat                                           Decimal                            @default(0) @db.Decimal(8, 4)
+  mlogpadj                                       Decimal                            @default(1) @db.Decimal(8, 4)
+  is_background                                  Boolean                            @default(false)
+  genetype_id                                    Int?
+  gc_txi_data                                    gc_txi_data[]
+  gene_fusions_gene_fusions_left_gene_idTogenes  gene_fusions[]                     @relation("gene_fusions_left_gene_idTogenes")
+  gene_fusions_gene_fusions_right_gene_idTogenes gene_fusions[]                     @relation("gene_fusions_right_gene_idTogenes")
+  genetypes                                      genetypes?                         @relation(fields: [genetype_id], references: [id], map: "genes_fk_genetypes_id")
+  mutations                                      mutations[]
+  salmon_merged_gene_results                     salmon_merged_gene_results[]
+  salmon_merged_transcript_results               salmon_merged_transcript_results[]
+  sc_gene_expression                             sc_gene_expression?
+  transcripts                                    transcripts[]
+}
+
+model genetypes {
+  id    Int     @id @default(autoincrement())
+  name  String  @unique(map: "genetypes_unique_name") @db.VarChar
+  genes genes[]
+}
+
+model metadata {
+  metadatakey_id Int
+  sample_id      Int
+  value          String       @db.VarChar
+  metadatakeys   metadatakeys @relation(fields: [metadatakey_id], references: [id], onDelete: NoAction, map: "metadata_fk_metadatakey_Id")
+  samples        samples      @relation(fields: [sample_id], references: [id], onDelete: Cascade, map: "metadata_fk_samples_id")
+
+  @@id([metadatakey_id, sample_id])
+}
+
+model metadatakeys {
+  id          Int        @id @default(autoincrement())
+  name        String     @unique(map: "metadatakeys_unique_name") @db.VarChar
+  description String?
+  metadata    metadata[]
+}
+
+model msigdbcategories {
+  id                  Int                   @id @default(autoincrement())
+  name                String                @unique(map: "msigdbcategories_unique_name") @db.VarChar
+  description         String?
+  precomputed         Boolean               @default(false)
+  msigdbsubcategories msigdbsubcategories[]
+}
+
+model msigdbnames {
+  id                   Int                 @id @default(autoincrement())
+  name                 String              @db.VarChar
+  msigdbsubcategory_id Int
+  msigdbsubcategories  msigdbsubcategories @relation(fields: [msigdbsubcategory_id], references: [id], onDelete: Cascade, map: "msigdbnames_fk_msigdbsubcategories_id")
+  ssgseas_old          ssgseas_old[]
+}
+
+model msigdbsubcategories {
+  id                Int              @id @default(autoincrement())
+  name              String           @db.VarChar
+  msigdbcategory_id Int
+  msigdbnames       msigdbnames[]
+  msigdbcategories  msigdbcategories @relation(fields: [msigdbcategory_id], references: [id], onDelete: Cascade, map: "msigdbsubcategories_fk_msigdbcategories_id")
+}
+
+model mutation_types {
+  id            Int         @id @default(autoincrement())
+  mutation_type String      @unique @db.VarChar(255)
+  mutations     mutations[]
+}
+
+model mutations {
+  id               Int                @id @default(autoincrement())
+  chromosome       String             @db.VarChar(50)
+  start_position   Int
+  end_position     Int
+  reference_allele String             @db.VarChar(50)
+  variant_allele   String             @db.VarChar(50)
+  protein_change   String?            @db.VarChar(50)
+  gene_id          Int?
+  mutation_type_id Int?
+  genes            genes?             @relation(fields: [gene_id], references: [id])
+  mutation_types   mutation_types?    @relation(fields: [mutation_type_id], references: [id])
+  sample_mutations sample_mutations[]
+
+  @@unique([chromosome, start_position, end_position, reference_allele, variant_allele], map: "uq_mutations_locus")
+}
+
+model patient_proteins {
+  protein_id         Int
+  patient_id         Int
+  protein_expression Decimal?           @default(0) @db.Decimal(7, 5)
+  proteomic_counts   proteomic_counts   @relation(fields: [protein_id], references: [id], onDelete: Cascade, map: "patient_proteins_fk_proteomic_counts_id")
+  proteomic_metadata proteomic_metadata @relation(fields: [patient_id], references: [id], onDelete: Cascade, map: "patient_proteins_fk_proteomic_metadata_id")
+
+  @@id([protein_id, patient_id])
+}
+
+model patients {
+  id      Int       @id @default(autoincrement())
+  name    String    @unique(map: "patients_unique_name") @db.VarChar
+  samples samples[]
+}
+
+model pdx_models {
+  name    String  @id
+  pdx     Float[]
+  ltl     Float[]
+  merged1 Json?
+  merged2 Json?
+  n18vs0  Json?
+  n32vs0  Json?
+  n32vs18 Json?
+  u18vs0  Json?
+  u32vs0  Json?
+  u32vs18 Json?
+}
+
+model pipeline_job_types {
+  id            Int             @id
+  name          String          @db.VarChar
+  pipeline_jobs pipeline_jobs[]
+}
+
+model pipeline_jobs {
+  id                 Int                @id @default(autoincrement())
+  user_id            String             @default("PUBLIC_USER") @db.VarChar
+  type               Int                @default(1)
+  pre_run_status     job_status         @default(created)
+  pre_run_errors     String?
+  run_status         job_status         @default(created)
+  run_errors         String?
+  post_run_status    job_status         @default(created)
+  post_run_errors    String?
+  created_at         DateTime?          @default(now()) @db.Timestamp(6)
+  finished_at        DateTime?          @db.Timestamp(6)
+  log                String?
+  file_name          String?
+  metadata           Json?
+  pipeline_job_types pipeline_job_types @relation(fields: [type], references: [id], onDelete: NoAction, map: "pipeline_jobs_fk_type")
+  users              users              @relation(fields: [user_id], references: [uid], onDelete: Cascade, map: "pipeline_jobs_fk_user_id")
+}
+
+model proteomic_counts {
+  id               Int                @id @default(autoincrement())
+  name             String             @db.VarChar
+  gene_symb        String             @db.VarChar
+  patient_proteins patient_proteins[]
+}
+
+model proteomic_metadata {
+  id               Int                @id @default(autoincrement())
+  name             String             @db.VarChar
+  pseudotime       Decimal            @db.Decimal(16, 12)
+  group            String             @db.VarChar
+  type             String             @db.VarChar
+  set              String             @db.VarChar
+  patient_proteins patient_proteins[]
+}
+
+model salmon_merged_gene_results {
+  id        BigInt  @id @default(autoincrement())
+  sample_id Int
+  gene_id   Int?
+  counts    Float
+  length    Float?
+  abundance Float?
+  genes     genes?  @relation(fields: [gene_id], references: [id], onDelete: Cascade, map: "salmon_merged_gene_results_fk_gene_id")
+  samples   samples @relation(fields: [sample_id], references: [id], onDelete: Cascade, map: "salmon_merged_gene_results_fk_sample_id")
+}
+
+model salmon_merged_transcript_results {
+  id          BigInt      @id @default(autoincrement())
+  sample_id   Int
+  tx_id       Int
+  gene_id     Int?
+  counts      Float
+  length      Float?
+  abundance   Float?
+  genes       genes?      @relation(fields: [gene_id], references: [id], onDelete: Cascade, map: "salmon_merged_transcript_results_fk_gene_id")
+  samples     samples     @relation(fields: [sample_id], references: [id], onDelete: Cascade, map: "salmon_merged_transcript_results_fk_sample_id")
+  transcripts transcripts @relation(fields: [tx_id], references: [id], onDelete: Cascade, map: "salmon_merged_transcript_results_fk_tx_id")
+}
+
+model sample_gene_fusions {
+  sample_id      Int
+  gene_fusion_id Int
+  gene_fusions   gene_fusions @relation(fields: [gene_fusion_id], references: [id], onDelete: Cascade)
+  samples        samples      @relation(fields: [sample_id], references: [id], onDelete: Cascade)
+
+  @@id([sample_id, gene_fusion_id])
+}
+
+model sample_mutations {
+  createdAt   DateTime  @db.Timestamptz(6)
+  updatedAt   DateTime  @db.Timestamptz(6)
+  mutation_id Int
+  sample_id   Int
+  mutations   mutations @relation(fields: [mutation_id], references: [id], onDelete: Cascade)
+  samples     samples   @relation(fields: [sample_id], references: [id], onDelete: Cascade)
+
+  @@id([mutation_id, sample_id])
+}
+
+model samples {
+  id                               Int                                @id @default(autoincrement())
+  name                             String                             @unique(map: "samples_unique_name") @db.VarChar
+  totalcounts                      BigInt                             @default(0)
+  pc1                              Decimal                            @default(0) @db.Decimal(8, 2)
+  pc2                              Decimal                            @default(0) @db.Decimal(8, 2)
+  pc3                              Decimal                            @default(0) @db.Decimal(8, 2)
+  pseudotime                       Decimal                            @default(0) @db.Decimal(8, 2)
+  created_at                       DateTime?                          @default(now()) @db.Timestamptz(6)
+  updated_at                       DateTime?                          @default(now()) @db.Timestamptz(6)
+  patient_id                       Int?
+  dataset_id                       Int?
+  user_id                          String                             @db.VarChar
+  fmetadata                        fmetadata[]
+  gc_txi_data                      gc_txi_data[]
+  metadata                         metadata[]
+  salmon_merged_gene_results       salmon_merged_gene_results[]
+  salmon_merged_transcript_results salmon_merged_transcript_results[]
+  sample_gene_fusions              sample_gene_fusions[]
+  sample_mutations                 sample_mutations[]
+  datasets                         datasets?                          @relation(fields: [dataset_id], references: [id], map: "samples_fk_datasets_id")
+  patients                         patients?                          @relation(fields: [patient_id], references: [id], map: "samples_fk_patients_id")
+  users                            users                              @relation(fields: [user_id], references: [uid], onDelete: Cascade, map: "samples_fk_users_id")
+  ssgseas_old                      ssgseas_old[]
+  txi_data                         txi_data[]
+}
+
+model sc_cells {
+  id                                 String  @id @db.VarChar(255)
+  nCount_RNA                         Int?
+  nFeature_RNA                       Int?
+  log10GenesPerUMI                   Float?
+  mitoRatio                          Float?
+  riboRatio                          Float?
+  hbRatio                            Float?
+  platRatio                          Float?
+  RAW_ID                             String? @db.VarChar(255)
+  RAW_PATIENT                        String? @db.VarChar(255)
+  PATIENT                            String? @db.VarChar(255)
+  DATASET                            String? @db.VarChar(255)
+  METHOD                             String? @db.VarChar(255)
+  FACS                               String? @db.VarChar(255)
+  ID                                 String? @db.VarChar(255)
+  STAGE                              String? @db.VarChar(255)
+  MacroPopulation                    String? @db.VarChar(255)
+  AR_signalling                      Float?
+  Neuroendocrine                     Float?
+  StemCellLike                       Float?
+  WNT_signalling                     Float?
+  leverage_score                     Float?
+  Annotation                         String? @db.VarChar(255)
+  log_Normalized_CNV_Deviation_Score Float?
+  Normalized_CNV_Deviation_Score     Float?
+  UMAP_1                             Float?
+  UMAP_2                             Float?
+  subgroup                           String? @db.VarChar(255)
+  compartment                        Int     @default(0)
+}
+
+model sc_gene_expression {
+  id_gene                     Int   @id
+  expression                  Json
+  microenv_expression         Json?
+  imputed_expression          Json?
+  imputed_microenv_expression Json?
+  genes                       genes @relation(fields: [id_gene], references: [id], onDelete: Cascade)
+}
+
+model singlecell_experiments {
+  id            Int         @id @default(autoincrement())
+  user_id       String      @db.VarChar
+  experiment_id Int
+  result        Json?       @db.Json
+  experiments   experiments @relation(fields: [experiment_id], references: [id], onDelete: Cascade, map: "singlecell_experiments_fk_experiments_id")
+  users         users       @relation(fields: [user_id], references: [uid], onDelete: Cascade, map: "singlecell_experiments_fk_users_id")
+}
+
+model ssgseas {
+  id            Int @id(map: "ssgseas_pkey1") @default(autoincrement())
+  value         Int
+  msigdbname_id Int
+  sample_id     Int
+}
+
+model ssgseas_old {
+  id            Int         @id(map: "ssgseas_pkey") @default(autoincrement())
+  value         Int
+  msigdbname_id Int
+  sample_id     Int
+  msigdbnames   msigdbnames @relation(fields: [msigdbname_id], references: [id], onDelete: Cascade, map: "ssgseas_fk_msigdbnames_id")
+  samples       samples     @relation(fields: [sample_id], references: [id], onDelete: Cascade, map: "ssgseas_fk_samples_id")
+}
+
+model transcripts {
+  id                               Int                                @id @default(autoincrement())
+  ensembl                          String                             @unique(map: "transcripts_unique_ensembl") @db.VarChar
+  corr                             Decimal                            @default(0) @db.Decimal(8, 4)
+  stat                             Decimal                            @default(0) @db.Decimal(8, 4)
+  mlogpadj                         Decimal                            @default(1) @db.Decimal(8, 4)
+  is_background                    Boolean                            @default(false)
+  transcripttype_id                Int?
+  gene_id                          Int?
+  salmon_merged_transcript_results salmon_merged_transcript_results[]
+  genes                            genes?                             @relation(fields: [gene_id], references: [id], map: "transcripts_fk_genes_id")
+  transcripttypes                  transcripttypes?                   @relation(fields: [transcripttype_id], references: [id], map: "transcripts_fk_transcripttypes_id")
+  txi_data                         txi_data[]
+}
+
+model transcripttypes {
+  id          Int           @id @default(autoincrement())
+  name        String        @unique(map: "transcripttypes_unique_name") @db.VarChar
+  transcripts transcripts[]
+}
+
+model txi_data {
+  transcript_id Int
+  sample_id     Int
+  abundance     Decimal?    @db.Decimal(12, 6)
+  counts        Decimal?    @db.Decimal(11, 3)
+  length        Decimal?    @db.Decimal(9, 3)
+  samples       samples     @relation(fields: [sample_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "txi_data_fk_sample_id")
+  transcripts   transcripts @relation(fields: [transcript_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "txi_data_fk_transcript_id")
+
+  @@id([transcript_id, sample_id])
+}
+
+model users {
+  uid                    String                   @id @db.VarChar
+  email                  String                   @unique(map: "users_unique_email") @db.VarChar
+  permission             Int?
+  samples_limit          Int?
+  experiments_limit      Int?
+  privacy_policy         Int?
+  experiments            experiments[]
+  pipeline_jobs          pipeline_jobs[]
+  samples                samples[]
+  singlecell_experiments singlecell_experiments[]
+}
+
+enum enum_pipeline_jobs_post_run_status {
+  on_hold
+  in_progress
+  done
+  failed
+}
+
+enum enum_pipeline_jobs_pre_run_status {
+  on_hold
+  in_progress
+  done
+  failed
+}
+
+enum enum_pipeline_jobs_run_status {
+  on_hold
+  in_progress
+  done
+  failed
+}
+
+enum job_status {
+  created
+  on_hold
+  in_progress
+  failed
+  done
+}
