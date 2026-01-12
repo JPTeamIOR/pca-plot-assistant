@@ -1,5 +1,6 @@
 import http from 'http';
 import { PrismaClient } from '@prisma/client';
+import { handleUserQuery } from './services/aiService';
 
 const hostname = '0.0.0.0';
 const port = 3000;
@@ -9,32 +10,38 @@ const prisma = new PrismaClient();
 const server = http.createServer(async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
 
-    if (req.url === '/health') {
-        try {
-            await prisma.$connect();
-            res.statusCode = 200;
-            res.end(JSON.stringify({ status: 'ok', message: 'Database connection successful' }));
-        } catch (error) {
-            console.error('DB Error:', error);
-            res.statusCode = 500;
-            res.end(JSON.stringify({ status: 'error', message: 'Database connection failed' }));
-        }
-        return;
-    }
+    if (req.url === '/ai' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => {
+            body += chunk.toString();
+        });
 
-    if (req.url === '/experiments') {
-        try {
-            const experiments = await prisma.experiments.findMany({
-                take: 5,
-                select: { id: true, name: true, status: true }
-            });
-            res.statusCode = 200;
-            res.end(JSON.stringify(experiments));
-        } catch (error) {
-            console.error('Query Error:', error);
-            res.statusCode = 500;
-            res.end(JSON.stringify({ error: 'Failed to fetch experiments' }));
-        }
+        req.on('end', async () => {
+            try {
+                const { query } = JSON.parse(body);
+                if (!query) {
+                    res.statusCode = 400;
+                    res.end(JSON.stringify({ error: 'Missing query parameter' }));
+                    return;
+                }
+                const sqlQuery = await handleUserQuery(query);
+
+                // Execute the generated SQL query
+                const dbResults = await prisma.$queryRawUnsafe(sqlQuery);
+
+                // Helper to handle BigInt serialization
+                const jsonResult = JSON.stringify({ query: sqlQuery, data: dbResults }, (key, value) =>
+                    typeof value === 'bigint' ? value.toString() : value
+                );
+
+                res.statusCode = 200;
+                res.end(jsonResult);
+            } catch (error) {
+                console.error('AI/DB Error:', error);
+                res.statusCode = 500;
+                res.end(JSON.stringify({ error: 'Processing failed', details: String(error) }));
+            }
+        });
         return;
     }
 
