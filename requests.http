@@ -20,3 +20,5 @@ Content-Type: {{contentType}}
 {
     "query": "I want the data for cells that have ANNOTATION Hillock (normal) and their respective gene expression for the TRIM24 gene."
 }
+
+

@@ -68,6 +68,10 @@ This project is configured with a **Dev Container** for a consistent development
 - `GET /`: Health check message ("Hello Antigravity!").
 - `GET /health`: Database connection check.
 
+## Architecture Diagram
+
+![PCA Plot Assistant Architecture](pca-plot-assistant.drawio.svg)
+
 ## Project Structure
 
 - `src/`: Source code.
@@ -75,3 +79,5 @@ This project is configured with a **Dev Container** for a consistent development
 - `.devcontainer/`: Configuration for Antigravity Dev Containers.
 - `docker-compose.yml`: Service definition for local development.
 - `Dockerfile`: Image definition for the application.
+
+
