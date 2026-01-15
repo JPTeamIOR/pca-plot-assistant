@@ -42,6 +42,8 @@ const server = http.createServer(async (req, res) => {
                 // Execute the generated SQL query
                 const dbResults = await prisma.$queryRawUnsafe(sqlQuery);
 
+                console.log("=========> DB Results (first 3):", Array.isArray(dbResults) ? dbResults.slice(0, 3) : dbResults);
+
                 // Prepare Data (Handle BigInts before processing)
                 // We serialize and deserialize to get clean number/string types
                 const cleanData = JSON.parse(JSON.stringify(dbResults, (key, value) =>
@@ -82,6 +84,9 @@ const server = http.createServer(async (req, res) => {
                 res.end(JSON.stringify({ error: 'Processing failed', details: String(error) }));
             }
         });
+
+        console.log('====================Finished processing request=======================')
+
         return;
     }
 

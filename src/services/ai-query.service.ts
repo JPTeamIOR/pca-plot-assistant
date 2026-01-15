@@ -14,10 +14,13 @@ export async function handleUserQuery(userInput: string) {
 
 ${prismaSchema}
 The samples you need to look for in bulk are always and only public ones user_id = 'PUBLIC_USER'.
-Always respond by sending me the query I need to run on the database to retrieve the data requested by the user. `;
+Always respond by sending me the query I need to run on the database to retrieve the data requested by the user.
+To execute the query, always use the parameters you identify in the database schema.
+Always respond exclusively with the RAW SQL query and nothing else.
+`;
 
     const model = genAI.getGenerativeModel({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.0-flash-lite",
         systemInstruction: systemInstruction
     });
 
@@ -26,6 +29,8 @@ Always respond by sending me the query I need to run on the database to retrieve
     const aiResponse = result.response.text();
 
     console.log("=========> Raw AI Response:", aiResponse);
+
+
 
     const cleanedQuery = cleanQuery(aiResponse);
     console.log("=========> Cleaned Query:", cleanedQuery);

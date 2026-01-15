@@ -8,9 +8,12 @@ export function isSafeQuery(query: string): boolean {
     const upperQuery = query.toUpperCase();
 
     // Check if it starts with SELECT or WITH
-    if (!upperQuery.startsWith('SELECT') && !upperQuery.startsWith('WITH')) {
-        return false;
-    }
+    // if (!upperQuery.startsWith('SELECT') && !upperQuery.startsWith('WITH')) {
+    //     console.log(`#Query does not start with SELECT or WITH. Starts with: ${upperQuery.slice(0, 20)}`);
+    //     return false;
+    // }
+
+
 
     const forbiddenKeywords = [
         'INSERT', 'UPDATE', 'DELETE', 'DROP', 'TRUNCATE',
@@ -21,7 +24,7 @@ export function isSafeQuery(query: string): boolean {
     for (const keyword of forbiddenKeywords) {
         const regex = new RegExp(`\\b${keyword}\\b`, 'i');
         if (regex.test(query)) {
-            console.warn(`Security Block: Forbidden keyword '${keyword}' detected.`);
+            console.log("#Forbidden keyword '" + keyword + "' detected.");
             return false;
         }
     }

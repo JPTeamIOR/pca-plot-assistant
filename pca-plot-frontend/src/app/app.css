@@ -1,0 +1,75 @@
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 64px);
+    background-color: #f8f9fa;
+}
+
+.content-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 40px 20px;
+    max-width: 1000px;
+    margin: 0 auto;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.welcome-section {
+    text-align: center;
+    margin-top: 100px;
+}
+
+.welcome-section h1 {
+    font-size: 32px;
+    font-weight: 600;
+    color: #202124;
+}
+
+.welcome-section p {
+    color: #5f6368;
+    font-size: 18px;
+}
+
+.intent-section {
+    width: 100%;
+}
+
+.intent-card {
+    border-radius: 12px;
+    border: 1px solid #dadce0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+.intent-avatar {
+    background-color: #e8f0fe;
+    color: #1a73e8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.intent-text {
+    font-size: 1.25rem;
+    font-weight: 400;
+    color: #202124;
+    margin: 16px 0;
+    font-style: italic;
+    padding-left: 8px;
+    border-left: 4px solid #1a73e8;
+}
+
+.input-area {
+    padding: 20px 0;
+    background-color: #f8f9fa;
+    border-top: 1px solid #dadce0;
+}
+
+.result-section {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
