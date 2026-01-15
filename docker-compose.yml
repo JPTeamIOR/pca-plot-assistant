@@ -14,3 +14,16 @@ services:
       - DATABASE_URL=postgresql://${PSQL_USER}:${PSQL_PASSWORD}@${PSQL_HOSTNAME}:${PSQL_LOCAL_PORT}/${PSQL_DBNAME}?schema=public
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+  frontend:
+    build:
+      context: ./pca-plot-frontend
+    container_name: pca_plot_frontend
+    working_dir: /app
+    volumes:
+      - ./pca-plot-frontend:/app
+      - /app/node_modules
+    ports:
+      - "4200:4200"
+    environment:
+      - CHOKIDAR_USEPOLLING=true

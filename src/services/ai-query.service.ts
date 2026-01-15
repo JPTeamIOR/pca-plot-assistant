@@ -13,8 +13,8 @@ export async function handleUserQuery(userInput: string) {
     const systemInstruction = `You are the expert assistant for the Prostate Cancer Atlas. Your task is to help researchers query the data we have in the database, mainly bulk, single-cell and proteomics data. Here is the database schema:
 
 ${prismaSchema}
-
-Always respond by sending me the query I need to run on the database to retrieve the data requested by the user.`;
+The samples you need to look for in bulk are always and only public ones user_id = 'PUBLIC_USER'.
+Always respond by sending me the query I need to run on the database to retrieve the data requested by the user. `;
 
     const model = genAI.getGenerativeModel({
         model: "gemini-3-flash-preview",
