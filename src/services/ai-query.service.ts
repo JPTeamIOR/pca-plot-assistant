@@ -1,9 +1,7 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import fs from 'fs';
 import path from 'path';
 import { cleanQuery, isSafeQuery } from './queryValidator';
-
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENAI_API_KEY!);
+import { generateAiText } from './ai-client.service';
 
 
 
@@ -50,14 +48,10 @@ Example query for single-cell stage:
 SELECT * FROM sc_cells WHERE \"STAGE\" = 'mCRPC';
 `;
 
-    const model = genAI.getGenerativeModel({
-        model: "gemini-3-pro-preview",
-        systemInstruction: systemInstruction
+    const aiResponse = await generateAiText({
+        systemInstruction: systemInstruction,
+        prompt: userInput
     });
-
-
-    const result = await model.generateContent(userInput);
-    const aiResponse = result.response.text();
 
     console.log("=========> Raw AI Response:", aiResponse);
 

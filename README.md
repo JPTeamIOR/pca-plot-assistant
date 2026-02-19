@@ -18,7 +18,24 @@ A backend service for the Prostate Cancer Atlas Plot Assistant, built with Node.
    PSQL_PASSWORD=your_db_password
    PSQL_DBNAME=your_db_name
    PSQL_LOCAL_PORT=5432
+   AI_PROVIDER=gemini
+   AI_MODEL=gemini-3-pro-preview
+   GOOGLE_GENAI_API_KEY=your_google_genai_key
+   # Only required if AI_PROVIDER=openai
+   OPENAI_API_KEY=your_openai_api_key
+   # Only used if AI_PROVIDER=ollama
+   OLLAMA_BASE_URL=http://ollama:11434
    ```
+
+   AI configuration notes:
+   - `AI_PROVIDER`: `gemini`, `openai` or `ollama`.
+   - `AI_MODEL`: optional override. If not set, defaults are:
+   - `gemini` -> `gemini-3-pro-preview`
+   - `openai` -> `gpt-4.1-mini`
+   - `ollama` -> `llama3.1:8b`
+   - With `docker-compose.yml` in this repo, use `OLLAMA_BASE_URL=http://ollama:11434`.
+   - First-time model download example: `docker compose exec ollama ollama pull llama3`.
+   - If you run Ollama on host instead of container, use `OLLAMA_BASE_URL=http://host.docker.internal:11434`.
 
 ## Getting Started
 
@@ -79,5 +96,3 @@ This project is configured with a **Dev Container** for a consistent development
 - `.devcontainer/`: Configuration for Antigravity Dev Containers.
 - `docker-compose.yml`: Service definition for local development.
 - `Dockerfile`: Image definition for the application.
-
-

@@ -1,6 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENAI_API_KEY!);
+import { generateAiText } from "./ai-client.service";
 
 export async function generateTransformFunction(userInput: string, sampleData: any[]) {
     const systemInstruction = `You are a Senior JavaScript Developer. 
@@ -27,15 +25,13 @@ function transformData(data) {
         layout: { title: 'PCA Plot' }
     };
 }`;
-
-    const model = genAI.getGenerativeModel({
-        model: "gemini-3-pro-preview",
-        systemInstruction: systemInstruction
-    });
-
     const prompt = `User Intent: "${userInput}"
     Sample Data (first elements): ${JSON.stringify(sampleData)}`;
 
-    const result = await model.generateContent(prompt);
-    return result.response.text().replace(/```javascript/gi, '').replace(/```/g, '').trim();
+    const text = await generateAiText({
+        systemInstruction: systemInstruction,
+        prompt
+    });
+
+    return text.replace(/```javascript/gi, '').replace(/```/g, '').trim();
 }
