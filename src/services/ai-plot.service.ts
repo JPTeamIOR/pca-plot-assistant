@@ -29,7 +29,7 @@ function transformData(data) {
 }`;
 
     const model = genAI.getGenerativeModel({
-        model: "gemini-2.0-flash-lite",
+        model: "gemini-3-pro-preview",
         systemInstruction: systemInstruction
     });
 
