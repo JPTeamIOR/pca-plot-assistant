@@ -5,12 +5,15 @@ type AiProvider = "gemini" | "openai" | "ollama";
 interface GenerateAiTextInput {
     systemInstruction: string;
     prompt: string;
+    tools?: any[];
+    responseMimeType?: string;
+    responseSchema?: any;
 }
 
 const DEFAULT_MODELS: Record<AiProvider, string> = {
-    gemini: "gemini-3-pro-preview",
+    gemini: "gemini-2.5-flash-lite",
     openai: "gpt-4.1-mini",
-    ollama: "llama3"
+    ollama: "llama3.1:8b"
 };
 
 let geminiClient: GoogleGenerativeAI | null = null;
@@ -83,11 +86,29 @@ function formatOllamaConnectionError(baseUrl: string, error: unknown): Error {
 async function generateWithGemini(modelName: string, input: GenerateAiTextInput): Promise<string> {
     const model = getGeminiClient().getGenerativeModel({
         model: modelName,
-        systemInstruction: input.systemInstruction
+        systemInstruction: input.systemInstruction,
+        tools: input.tools,
+        generationConfig: {
+            responseMimeType: input.responseMimeType,
+            responseSchema: input.responseSchema,
+        }
     });
 
     const result = await model.generateContent(input.prompt);
     return result.response.text();
+}
+
+/**
+ * Higher level interface for chat-based agentic interactions
+ */
+export async function startGeminiChat(systemInstruction: string, tools?: any[]) {
+    const model = getGeminiClient().getGenerativeModel({
+        model: getModelName("gemini"),
+        systemInstruction,
+        tools,
+    });
+
+    return model.startChat();
 }
 
 async function generateWithOpenAI(modelName: string, input: GenerateAiTextInput): Promise<string> {
