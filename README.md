@@ -1,16 +1,44 @@
-# PCA Plot Assistant
+# Prostate Cancer Atlas (PCA) Plot Assistant
 
-A backend service for the Prostate Cancer Atlas Plot Assistant, built with Node.js, TypeScript, and Prisma.
+An autonomous AI agent designed to help researchers query, analyze, and visualize Prostate Cancer Atlas data. Built with Node.js, TypeScript, and Google Gemini.
 
-## Prerequisites
+## 🚀 The Autonomous Agent Architecture
 
-- **Docker** and **Docker Compose** installed on your machine.
-- An existing PostgreSQL database (the application connects to a host database).
+Unlike traditional sequential workflows, this project uses a **Google-native Autonomous Agent**. The agent handles the entire lifecycle of a request: from understanding user intent and fetching database schema details, to executing safe SQL queries and generating final Plotly.js configurations.
 
-## Configuration
+### Flow Diagram
+
+```mermaid
+sequenceDiagram
+    participant User as Researcher (Frontend)
+    participant Agent as Gemini Autonomous Agent
+    participant DB as Postgres (Prisma)
+
+    User->>Agent: "Show me PC1 vs PC2 for mCRPC samples"
+    loop Thinking Process
+        Agent->>Agent: Determine if schema is needed
+        opt Fetch Schema
+            Agent->>Agent: call get_schema_details()
+        end
+        Agent->>Agent: Generate & Validate SQL
+        Agent->>DB: Tool Call: query_database(sql)
+        DB-->>Agent: Raw Data Results
+        Agent->>Agent: Refine query or analyze results
+    end
+    Agent->>Agent: Generate Plotly JSON config
+    Agent-->>User: Final Response { plot, explanation }
+```
+
+## 🛠 Prerequisites
+
+- **Docker** and **Docker Compose** installed.
+- Access to a PostgreSQL database.
+- A **Google Generative AI API Key** (from [Google AI Studio](https://aistudio.google.com/)).
+
+## ⚙️ Configuration
 
 1. **Environment Variables**:
-   Ensure you have a `.env` file in the root directory. It should contain the following variables to connect to your local PostgreSQL database:
+   Create a `.env` file in the root directory:
 
    ```env
    PSQL_HOSTNAME=host.docker.internal
@@ -18,81 +46,42 @@ A backend service for the Prostate Cancer Atlas Plot Assistant, built with Node.
    PSQL_PASSWORD=your_db_password
    PSQL_DBNAME=your_db_name
    PSQL_LOCAL_PORT=5432
+   
+   # AI Configuration
    AI_PROVIDER=gemini
-   AI_MODEL=gemini-3-pro-preview
    GOOGLE_GENAI_API_KEY=your_google_genai_key
-   # Only required if AI_PROVIDER=openai
-   OPENAI_API_KEY=your_openai_api_key
-   # Only used if AI_PROVIDER=ollama
-   OLLAMA_BASE_URL=http://ollama:11434
    ```
 
-   AI configuration notes:
-   - `AI_PROVIDER`: `gemini`, `openai` or `ollama`.
-   - `AI_MODEL`: optional override. If not set, defaults are:
-   - `gemini` -> `gemini-3-pro-preview`
-   - `openai` -> `gpt-4.1-mini`
-   - `ollama` -> `llama3.1:8b`
-   - With `docker-compose.yml` in this repo, use `OLLAMA_BASE_URL=http://ollama:11434`.
-   - First-time model download example: `docker compose exec ollama ollama pull llama3`.
-   - If you run Ollama on host instead of container, use `OLLAMA_BASE_URL=http://host.docker.internal:11434`.
+## 🏃 Getting Started
 
-## Getting Started
+### Using Docker Compose
 
-### Using Docker Compose (Standard)
-
-To start the application locally:
-
-1. Build and start the container:
+1. **Start the services**:
    ```bash
-   docker compose up -d
+   docker compose up --build -d
    ```
 
-2. The server will be available at `http://localhost:3000`.
+2. **Access the API**:
+   - Backend: `http://localhost:3000`
+   - Frontend: `http://localhost:4200`
 
-3. To stop the service:
-   ```bash
-   docker compose down
-   ```
+### Testing the Agent Locally
 
-### Database Schema Synchronization
+You can run a standalone test of the agent's logic without starting the full server:
+```bash
+npx ts-node src/test-agent.ts
+```
 
-If you need to update the Prisma schema from the existing database or regenerate the client manually:
+## 🔒 Security
 
-1. Pull the latest schema from the database:
-   ```bash
-   docker exec -it pca_plot_assistant npx prisma db pull
-   ```
+The agent uses a multi-layered security approach for database interactions:
+1. **Word-based Validation**: All generated SQL is checked against forbidden keywords (DROP, DELETE, UPDATE, etc.).
+2. **Read-Only Tools**: The agent's interface to the database is restricted to SELECT operations.
+3. **Public Access Filter**: System instructions strictly enforce `user_id = 'PUBLIC_USER'` for bulk data queries unless otherwise authorized.
 
-2. Generate the Prisma Client:
-   ```bash
-   docker exec -it pca_plot_assistant npx prisma generate
-   ```
+## 📦 Project Structure
 
-### Using Antigravity Dev Containers (Recommended)
-
-This project is configured with a **Dev Container** for a consistent development environment.
-
-1. Open the project in **Antigravity**.
-2. When prompted, click **"Reopen in Container"** (or use the command palette `Ctrl+Shift+P` -> `Dev Containers: Reopen in Container`).
-3. Antigravity will build the container and set up the environment automatically:
-   - Installs Node.js dependencies (`npm install`).
-   - Generates the Prisma client (`npx prisma generate`).
-   - Installs recommended extensions (Prisma, TypeScript).
-
-## API Endpoints
-
-- `GET /`: Health check message ("Hello Antigravity!").
-- `GET /health`: Database connection check.
-
-## Architecture Diagram
-
-![PCA Plot Assistant Architecture](pca-plot-assistant.drawio.svg)
-
-## Project Structure
-
-- `src/`: Source code.
-- `prisma/`: Database schema configuration.
-- `.devcontainer/`: Configuration for Antigravity Dev Containers.
-- `docker-compose.yml`: Service definition for local development.
-- `Dockerfile`: Image definition for the application.
+- `src/services/ai-agent.service.ts`: The core autonomous loop and tool definitions.
+- `src/services/ai-client.service.ts`: Google Gemini integration with tool-calling support.
+- `src/index.ts`: Main HTTP server entry point.
+- `pca-plot-frontend/`: Angular application for visualization.

@@ -1,12 +1,8 @@
 import http from 'http';
-import { PrismaClient } from '@prisma/client';
-import { handleUserQuery } from './services/ai-query.service';
-import { generateTransformFunction } from './services/ai-plot.service';
+import { runPcaAgent } from './services/ai-agent.service';
 
 const hostname = '0.0.0.0';
 const port = 3000;
-
-const prisma = new PrismaClient();
 
 const server = http.createServer(async (req, res) => {
     // Set CORS headers
@@ -37,49 +33,16 @@ const server = http.createServer(async (req, res) => {
                     res.end(JSON.stringify({ error: 'Missing query parameter' }));
                     return;
                 }
-                const sqlQuery = await handleUserQuery(query);
 
-                // Execute the generated SQL query
-                const dbResults = await prisma.$queryRawUnsafe(sqlQuery);
+                console.log(`=========> Processing Request with Autonomous Agent: "${query}"`);
 
-                console.log("=========> DB Results (first 3):", Array.isArray(dbResults) ? dbResults.slice(0, 3) : dbResults);
-
-                // Prepare Data (Handle BigInts before processing)
-                // We serialize and deserialize to get clean number/string types
-                const cleanData = JSON.parse(JSON.stringify(dbResults, (key, value) =>
-                    typeof value === 'bigint' ? value.toString() : value
-                ));
-
-                // Take a sample for the AI to understand the structure
-                const sampleData = Array.isArray(cleanData) ? cleanData.slice(0, 5) : [];
-
-                // 1. Generate the transformation logic (code string)
-                const functionCode = await generateTransformFunction(query, sampleData);
-                console.log("=========> Generated Function Code:", functionCode);
-
-                // 2. Compile the function dynamically
-                // We wrap it to return the named function instance
-                // Safety: We trust the AI output here for this demo, in prod use isolated VM
-                const transformData = new Function(`${functionCode}; return transformData;`)();
-
-                // 3. Execute on full data
-                let plotConfig;
-                try {
-                    plotConfig = transformData(cleanData);
-                } catch (err) {
-                    console.error("Transform Execution Error:", err);
-                    plotConfig = { error: "Failed to transform data", details: String(err) };
-                }
-
-                // Helper to handle BigInt serialization (redundant but safe for final output)
-                const jsonResult = JSON.stringify({
-                    plot: plotConfig
-                });
+                // Use the new autonomous agent
+                const result = await runPcaAgent(query);
 
                 res.statusCode = 200;
-                res.end(jsonResult);
+                res.end(JSON.stringify(result));
             } catch (error) {
-                console.error('AI/DB Error:', error);
+                console.error('AI Agent Error:', error);
                 res.statusCode = 500;
                 res.end(JSON.stringify({ error: 'Processing failed', details: String(error) }));
             }

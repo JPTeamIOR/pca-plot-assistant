@@ -34,9 +34,23 @@
     <!-- Result Area (Plot Container) -->
     @if (plotResult()) {
     <div class="result-section">
-      <app-plot-container [data]="plotResult()!.data" [layout]="plotResult()!.layout">
-      </app-plot-container>
+      <mat-card class="explanation-card">
+        <mat-card-header>
+          <div mat-card-avatar class="explanation-avatar">
+            <mat-icon>info</mat-icon>
+          </div>
+          <mat-card-title>Analysis Explanation</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <p>{{ plotResult()!.explanation }}</p>
+        </mat-card-content>
+      </mat-card>
     </div>
+
+
+
+    <app-plot-container [data]="plotResult()!.data" [layout]="plotResult()!.layout">
+    </app-plot-container>
     }
   </div>
 

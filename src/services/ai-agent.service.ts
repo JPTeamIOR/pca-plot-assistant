@@ -12,6 +12,27 @@ const schemaPath = path.join(process.cwd(), 'prisma', 'schema.prisma');
 const prismaSchema = fs.readFileSync(schemaPath, 'utf-8');
 
 /**
+ * Helper to recursively convert BigInt to string for JSON serialization
+ */
+function serializeData(obj: any): any {
+    if (obj === null || typeof obj !== 'object') {
+        return typeof obj === 'bigint' ? obj.toString() : obj;
+    }
+
+    if (Array.isArray(obj)) {
+        return obj.map(serializeData);
+    }
+
+    const result: any = {};
+    for (const key in obj) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+            result[key] = serializeData(obj[key]);
+        }
+    }
+    return result;
+}
+
+/**
  * Tools available for the Agent
  */
 const tools = [
@@ -46,31 +67,31 @@ Your goal is to help researchers analyze and visualize data (bulk, single-cell, 
 STRATEGY:
 1. When a user asks a question, if you need data, use the 'query_database' tool.
 2. If you are unsure about the schema, use 'get_schema_details'.
-3. Once you have the data, you MUST return a final response that is a VALID JSON object for Plotly.js.
+3. You will only see a SAMPLE (first 3 rows) of the database results to save tokens.
+4. Your goal is to write a transformation function in JavaScript that will process the FULL results array.
 
 DATABASE RULES:
 - The samples for bulk data are always 'PUBLIC_USER' (user_id = 'PUBLIC_USER').
 - Bulk metadata is in 'metadata' table (linked to 'metadatakeys').
-- Single-cell data is in 'sc_cells'.
+- Single-cell data is in 'sc_cells', divided in cancer (compartment 0) and non-cancer (compartment 1).
+- Compartment is DIFFERENT than dataset.
 - Forbidden keywords: INSERT, UPDATE, DELETE, etc. Only SELECT is allowed.
 
 RESPONSE FORMAT:
 Your final answer must be a JSON object with this structure:
 {
-  "plot": {
-    "data": [...],
-    "layout": { "title": "...", "xaxis": {...}, "yaxis": {...} }
-  },
+  "transformCode": "function transformData(data) { ... return { data: [...], layout: {...} }; }",
   "explanation": "A brief explanation of what is shown in the plot."
 }
 
-Do not include any markdown formatting outside the JSON if you are providing the final plot.`;
+The 'transformCode' must be a single string containing a function named 'transformData' that takes 'data' (the full array of objects from the DB) and returns a Plotly.js configuration object.`;
 
 /**
  * Process a user request using an autonomous agent loop
  */
 export async function runPcaAgent(userInput: string) {
     const chat = await startGeminiChat(systemInstruction, tools);
+    let fullResults: any[] = [];
 
     let result = await chat.sendMessage(userInput);
     let response = result.response;
@@ -103,14 +124,21 @@ export async function runPcaAgent(userInput: string) {
                 } else {
                     try {
                         const data = await prisma.$queryRawUnsafe(sql);
-                        // Limit data size sent back to model
-                        const dataSummary = Array.isArray(data) ? data.slice(0, 50) : data;
+                        fullResults = Array.isArray(data) ? data : [data];
+
+                        // Limit data size sent back to model (only first 3 rows)
+                        const dataSample = fullResults.slice(0, 3);
+
+                        // Serialize BigInt values to strings
+                        const cleanSample = serializeData(dataSample);
+
                         toolOutputs.push({
                             functionResponse: {
                                 name: "query_database",
                                 response: {
-                                    result: dataSummary,
-                                    total_rows: Array.isArray(data) ? data.length : 1
+                                    result_snippet: cleanSample,
+                                    total_rows: fullResults.length,
+                                    message: "I am sending only the first 3 rows to save tokens. Use the full results structure to build your transform function."
                                 }
                             }
                         });
@@ -132,12 +160,27 @@ export async function runPcaAgent(userInput: string) {
     }
 
     const finalResult = response.text();
-    console.log("[Agent] Final Result:", finalResult);
+    console.log("[Agent] Final Result Content:", finalResult);
 
     try {
-        // Attempt to parse if it's JSON
-        return JSON.parse(finalResult.replace(/```json/gi, '').replace(/```/g, '').trim());
+        const parsed = JSON.parse(finalResult.replace(/```json/gi, '').replace(/```/g, '').trim());
+
+        if (parsed.transformCode) {
+            console.log("[Agent] Executing generated transformCode on full dataset...");
+            // Execute the transform function on the fullResults
+            const transformData = new Function(`${parsed.transformCode}; return transformData;`)();
+            const cleanFullData = serializeData(fullResults);
+            const plotConfig = transformData(cleanFullData);
+
+            return {
+                plot: plotConfig,
+                explanation: parsed.explanation
+            };
+        }
+
+        return parsed;
     } catch (e) {
+        console.error("[Agent] Error parsing/executing response:", e);
         return { message: finalResult };
     }
 }

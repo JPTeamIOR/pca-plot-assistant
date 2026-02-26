@@ -7,7 +7,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ChatInputComponent } from './chat-input/chat-input.component';
 import { PlotContainerComponent } from './plot-container/plot-container.component';
 import { AiService } from './services/ai.service';
-import { PlotData, Layout } from 'plotly.js';
+import { JsonPipe } from '@angular/common';
 
 @Component({
   selector: 'app-root',
@@ -19,7 +19,8 @@ import { PlotData, Layout } from 'plotly.js';
     MatIconModule,
     MatProgressBarModule,
     ChatInputComponent,
-    PlotContainerComponent
+    PlotContainerComponent,
+    JsonPipe
   ],
   templateUrl: './app.html',
   styleUrl: './app.css'
@@ -29,7 +30,7 @@ export class App {
 
   userIntent = signal<string | null>(null);
   isLoading = signal(false);
-  plotResult = signal<{ data: any[], layout: any } | null>(null);
+  plotResult = signal<{ data: any[], layout: any, explanation: string } | null>(null);
 
   constructor(private aiService: AiService) { }
 
@@ -46,7 +47,8 @@ export class App {
         if (response.plot && !response.plot.error) {
           this.plotResult.set({
             data: response.plot.data,
-            layout: response.plot.layout
+            layout: response.plot.layout,
+            explanation: response.explanation
           });
         }
       },

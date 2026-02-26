@@ -2,13 +2,13 @@ import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PlotlyComponent, PlotlyService } from 'angular-plotly.js';
 import * as PlotlyJS from 'plotly.js-dist-min';
-import { PlotData, Layout } from 'plotly.js';
+
 
 @Component({
-    selector: 'app-plot-container',
-    standalone: true,
-    imports: [CommonModule, PlotlyComponent],
-    template: `
+  selector: 'app-plot-container',
+  standalone: true,
+  imports: [CommonModule, PlotlyComponent],
+  template: `
     <div class="plot-wrapper" *ngIf="data && data.length > 0">
       <plotly-plot 
         [data]="data" 
@@ -21,7 +21,7 @@ import { PlotData, Layout } from 'plotly.js';
       <p>Awaiting data to generate visualization...</p>
     </div>
   `,
-    styles: [`
+  styles: [`
     .plot-wrapper {
       width: 100%;
       height: 500px;
@@ -42,11 +42,12 @@ import { PlotData, Layout } from 'plotly.js';
   `]
 })
 export class PlotContainerComponent {
-    @Input() data: any[] = [];
-    @Input() layout: any = {};
+  @Input() data: any[] = [];
+  @Input() layout: any = {};
+  @Input() explanation: string = '';
 
-    constructor() {
-        // Ensuring Plotly is registered for the first instance
-        PlotlyService.setPlotly(PlotlyJS);
-    }
+  constructor() {
+    // Ensuring Plotly is registered for the first instance
+    PlotlyService.setPlotly(PlotlyJS);
+  }
 }
