@@ -46,11 +46,10 @@
         </mat-card-content>
       </mat-card>
     </div>
-
-
-
-    <app-plot-container [data]="plotResult()!.data" [layout]="plotResult()!.layout">
+    @if (plotResult()?.data) {
+    <app-plot-container [data]="plotResult()!.data!" [layout]="plotResult()!.layout!">
     </app-plot-container>
+    }
     }
   </div>
 

@@ -19,6 +19,9 @@ Handles communication with AI providers (Gemini, OpenAI).
 ### AI Agent Service (`ai-agent.service.ts`)
 Implements the autonomous execution loop.
 
+- **Identity & Behavior**:
+    - The agent is a specialized tool for creating graphs and analyzing data for the Prostate Cancer Atlas.
+    - If a user request is unrelated to plotting or PCA data analysis, the agent must explicitly state its purpose using the `explanation` key in its response.
 - **Loop Pattern**:
     1. Send user input to the chat.
     2. While there are `functionCalls()` in the response:
@@ -28,7 +31,16 @@ Implements the autonomous execution loop.
     3. Return the final text response.
 - **Tools**:
     - `query_database`: Executes read-only SQL queries.
-    - `get_schema_details`: Provides database schema context to the model.
+    - `get_schema_details`: Provides specialized database schemas (`bulk` or `singlecell`) to the model for context.
+
+## Specialized Schemas
+
+The project uses split Prisma schemas to optimize token usage:
+- **`bulk`**: Contains models for global/sample metadata, genes, transcripts, patients, and SSGSEA results.
+- **`singlecell`**: Contains models for cell-level data and gene expression.
+
+**Routing Logic**:
+The agent is instructed to first determine the category of the user's request and then fetch the appropriate schema using `get_schema_details({ schemaType: "bulk" | "singlecell" })`.
 
 ## Best Practices
 

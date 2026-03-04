@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model sc_cells {
+  id                                 String  @id @db.VarChar(255)
+  nCount_RNA                         Int?
+  nFeature_RNA                       Int?
+  log10GenesPerUMI                   Float?
+  mitoRatio                          Float?
+  riboRatio                          Float?
+  hbRatio                            Float?
+  platRatio                          Float?
+  RAW_ID                             String? @db.VarChar(255)
+  RAW_PATIENT                        String? @db.VarChar(255)
+  PATIENT                            String? @db.VarChar(255)
+  DATASET                            String? @db.VarChar(255)
+  METHOD                             String? @db.VarChar(255)
+  FACS                               String? @db.VarChar(255)
+  ID                                 String? @db.VarChar(255)
+  STAGE                              String? @db.VarChar(255)
+  MacroPopulation                    String? @db.VarChar(255)
+  AR_signalling                      Float?
+  Neuroendocrine                     Float?
+  StemCellLike                       Float?
+  WNT_signalling                     Float?
+  leverage_score                     Float?
+  Annotation                         String? @db.VarChar(255)
+  log_Normalized_CNV_Deviation_Score Float?
+  Normalized_CNV_Deviation_Score     Float?
+  UMAP_1                             Float?
+  UMAP_2                             Float?
+  subgroup                           String? @db.VarChar(255)
+  compartment                        Int     @default(0)
+}
+
+model sc_gene_expression {
+  id_gene                     Int   @id
+  expression                  Json
+  microenv_expression         Json?
+  imputed_expression          Json?
+  imputed_microenv_expression Json?
+  genes                       genes @relation(fields: [id_gene], references: [id], onDelete: Cascade)
+}
+
+model genes {
+  id                                             Int                                @id @default(autoincrement())
+  name                                           String                             @db.VarChar
+  ensembl                                        String?                            @unique(map: "genes_unique_ensembl") @db.VarChar
+  corr                                           Decimal                            @default(0) @db.Decimal(8, 4)
+  stat                                           Decimal                            @default(0) @db.Decimal(8, 4)
+  mlogpadj                                       Decimal                            @default(1) @db.Decimal(8, 4)
+  is_background                                  Boolean                            @default(false)
+  genetype_id                                    Int?
+  gc_txi_data                                    gc_txi_data[]
+  gene_fusions_gene_fusions_left_gene_idTogenes  gene_fusions[]                     @relation("gene_fusions_left_gene_idTogenes")
+  gene_fusions_gene_fusions_right_gene_idTogenes gene_fusions[]                     @relation("gene_fusions_right_gene_idTogenes")
+  genetypes                                      genetypes?                         @relation(fields: [genetype_id], references: [id], map: "genes_fk_genetypes_id")
+  mutations                                      mutations[]
+  salmon_merged_gene_results                     salmon_merged_gene_results[]
+  salmon_merged_transcript_results               salmon_merged_transcript_results[]
+  sc_gene_expression                             sc_gene_expression?
+  transcripts                                    transcripts[]
+}
+
+model genetypes {
+  id    Int     @id @default(autoincrement())
+  name  String  @unique(map: "genetypes_unique_name") @db.VarChar
+  genes genes[]
+}

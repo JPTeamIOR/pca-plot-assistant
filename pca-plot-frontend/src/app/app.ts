@@ -30,7 +30,7 @@ export class App {
 
   userIntent = signal<string | null>(null);
   isLoading = signal(false);
-  plotResult = signal<{ data: any[], layout: any, explanation: string } | null>(null);
+  plotResult = signal<{ data?: any[], layout?: any, explanation: string } | null>(null);
 
   constructor(private aiService: AiService) { }
 
@@ -44,10 +44,10 @@ export class App {
         this.isLoading.set(false);
         console.log('Backend Response for intent:', response);
 
-        if (response.plot && !response.plot.error) {
+        if (response.explanation) {
           this.plotResult.set({
-            data: response.plot.data,
-            layout: response.plot.layout,
+            data: response.plot?.data,
+            layout: response.plot?.layout,
             explanation: response.explanation
           });
         }

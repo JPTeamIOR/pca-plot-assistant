@@ -11,7 +11,7 @@ interface GenerateAiTextInput {
 }
 
 const DEFAULT_MODELS: Record<AiProvider, string> = {
-    gemini: "gemini-2.5-flash-lite",
+    gemini: "gemini-3-flash-preview",
     openai: "gpt-4.1-mini"
 };
 

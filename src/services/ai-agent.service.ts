@@ -6,16 +6,42 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-// Read the Prisma schema file for context
-const schemaPath = path.join(process.cwd(), 'prisma', 'schema.prisma');
-const prismaSchema = fs.readFileSync(schemaPath, 'utf-8');
+// Paths for specialized Prisma schemas
+const PRISMA_DIR = path.join(process.cwd(), 'prisma');
+const SCHEMAS = {
+    full: path.join(PRISMA_DIR, 'schema.prisma'),
+    bulk: path.join(PRISMA_DIR, 'bulk.prisma'),
+    singlecell: path.join(PRISMA_DIR, 'singlecell.prisma')
+};
+
+/**
+ * Helper to read schema file safely
+ */
+function readSchema(type: keyof typeof SCHEMAS): string {
+    try {
+        if (fs.existsSync(SCHEMAS[type])) {
+            return fs.readFileSync(SCHEMAS[type], 'utf-8');
+        }
+    } catch (e) {
+        console.error(`Error reading schema ${type}:`, e);
+    }
+    return "";
+}
 
 /**
  * Helper to recursively convert BigInt to string for JSON serialization
  */
 function serializeData(obj: any): any {
     if (obj === null || typeof obj !== 'object') {
+        // Gestione BigInt
         return typeof obj === 'bigint' ? obj.toString() : obj;
+    }
+
+    // AGGIUNTA CRITICA: Gestione dei tipi Decimal di Prisma/PostgreSQL
+    // Se l'oggetto ha un metodo d ed e (tipico di Decimal.js usato da Prisma) 
+    // o se è un'istanza di Decimal, lo convertiamo in numero float.
+    if (obj.constructor && (obj.constructor.name === 'Decimal' || obj.d !== undefined)) {
+        return parseFloat(obj.toString());
     }
 
     if (Array.isArray(obj)) {
@@ -53,28 +79,44 @@ const tools = [
             },
             {
                 name: "get_schema_details",
-                description: "Returns the full Prisma schema of the database to understand table relations and columns.",
-                parameters: { type: "OBJECT", properties: {} }
+                description: "Returns a specialized Prisma schema. Use 'bulk' for global/sample data and 'singlecell' for single-cell specific tables.",
+                parameters: {
+                    type: "OBJECT",
+                    properties: {
+                        schemaType: {
+                            type: "string",
+                            enum: ["bulk", "singlecell"],
+                            description: "The type of schema to retrieve."
+                        }
+                    },
+                    required: ["schemaType"]
+                }
             }
         ]
     }
 ];
 
 const systemInstruction = `You are the expert autonomous assistant for the Prostate Cancer Atlas. 
-Your goal is to help researchers analyze and visualize data (bulk, single-cell, proteomics).
+Your primary and exclusive goal is to help researchers analyze and visualize data (bulk, single-cell) by creating interactive plots.
+
+IDENTITY & BEHAVIOR:
+1. You are a specialized plotting agent.
+2. If the user's request does not involve creating a graph or analyzing data for a visualization, you MUST explicitly state: "I am an agent specifically designed to create graphs and analyze data for the Prostate Cancer Atlas. How can I help you visualize your data today?"
+3. Do not engage in general conversation or tasks unrelated to PCA data analysis and plotting.
 
 STRATEGY:
-1. When a user asks a question, if you need data, use the 'query_database' tool.
-2. If you are unsure about the schema, use 'get_schema_details'.
-3. You will only see a SAMPLE (first 3 rows) of the database results to save tokens.
-4. Your goal is to write a transformation function in JavaScript that will process the FULL results array.
+1. When a user asks a question, determine if it relates to 'bulk' data or 'single-cell' data.
+2. If you need the database structure, use 'get_schema_details' with the appropriate 'schemaType'.
+   - Use 'bulk' for: samples, metadata, genes, transcripts, ssgsea, etc.
+   - Use 'singlecell' for: sc_cells, sc_gene_expression, UMAP, STAGE (sc), subgroup, etc.
+3. Once you have the schema, use 'query_database' to fetch data.
+4. You will only see a SAMPLE (first 3 rows) of the database results to save tokens.
+5. Write a transformation function in JavaScript that will process the FULL results array.
 
 DATABASE RULES:
-- The samples for bulk data are always 'PUBLIC_USER' (user_id = 'PUBLIC_USER').
-- Bulk metadata is in 'metadata' table (linked to 'metadatakeys').
-- Single-cell data is in 'sc_cells', divided in cancer (compartment 0) and non-cancer (compartment 1).
-- Compartment is DIFFERENT than dataset.
-- Forbidden keywords: INSERT, UPDATE, DELETE, etc. Only SELECT is allowed.
+- Bulk data: user_id = 'PUBLIC_USER' in 'samples' table. Metadata is in 'metadata' table linked via 'metadatakeys'. The expression of genes is in 'gc_txi_data', the expression of transcripts is in 'txi_data'.
+- Single-cell data: 'sc_cells' table. Compartment 0 = cancer, Compartment 1 = non-cancer.
+- Only SELECT queries are allowed. Forbidden: INSERT, UPDATE, DELETE.
 
 RESPONSE FORMAT:
 Your final answer must be a JSON object with this structure:
@@ -104,10 +146,12 @@ export async function runPcaAgent(userInput: string) {
             console.log(`[Agent] Calling tool: ${call.name} with args:`, call.args);
 
             if (call.name === "get_schema_details") {
+                const type = (call.args as any).schemaType as keyof typeof SCHEMAS;
+                const schema = readSchema(type) || "Schema not found or empty.";
                 toolOutputs.push({
                     functionResponse: {
                         name: "get_schema_details",
-                        response: { schema: prismaSchema }
+                        response: { schema }
                     }
                 });
             } else if (call.name === "query_database") {
@@ -180,6 +224,6 @@ export async function runPcaAgent(userInput: string) {
         return parsed;
     } catch (e) {
         console.error("[Agent] Error parsing/executing response:", e);
-        return { message: finalResult };
+        return { explanation: finalResult };
     }
 }
