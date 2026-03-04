@@ -12,22 +12,9 @@ services:
     environment:
       # Use env variables to connect to external DB (host).
       - DATABASE_URL=postgresql://${PSQL_USER}:${PSQL_PASSWORD}@${PSQL_HOSTNAME}:${PSQL_LOCAL_PORT}/${PSQL_DBNAME}?schema=public
-    depends_on:
-      ollama:
-        condition: service_healthy
+
     extra_hosts:
       - "host.docker.internal:host-gateway"
-
-  ollama:
-    image: ollama/ollama:latest
-    container_name: pca_plot_ollama
-    volumes:
-      - ollama_data:/root/.ollama
-    healthcheck:
-      test: [ "CMD", "ollama", "list" ]
-      interval: 10s
-      timeout: 5s
-      retries: 10
 
   frontend:
     build:
@@ -41,6 +28,3 @@ services:
       - "4200:4200"
     environment:
       - CHOKIDAR_USEPOLLING=true
-
-volumes:
-  ollama_data:

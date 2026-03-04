@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { startGeminiChat } from "./ai-client.service";
 import { isSafeQuery } from "./queryValidator";
 import { PrismaClient } from "@prisma/client";

@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-type AiProvider = "gemini" | "openai" | "ollama";
+type AiProvider = "gemini" | "openai";
 
 interface GenerateAiTextInput {
     systemInstruction: string;
@@ -12,8 +12,7 @@ interface GenerateAiTextInput {
 
 const DEFAULT_MODELS: Record<AiProvider, string> = {
     gemini: "gemini-2.5-flash-lite",
-    openai: "gpt-4.1-mini",
-    ollama: "llama3.1:8b"
+    openai: "gpt-4.1-mini"
 };
 
 let geminiClient: GoogleGenerativeAI | null = null;
@@ -23,13 +22,12 @@ function getAiProvider(): AiProvider {
 
     if (
         configuredProvider === "gemini" ||
-        configuredProvider === "openai" ||
-        configuredProvider === "ollama"
+        configuredProvider === "openai"
     ) {
         return configuredProvider;
     }
 
-    throw new Error(`Unsupported AI_PROVIDER '${configuredProvider}'. Use 'gemini', 'openai' or 'ollama'.`);
+    throw new Error(`Unsupported AI_PROVIDER '${configuredProvider}'. Use 'gemini' or 'openai'.`);
 }
 
 function getModelName(provider: AiProvider): string {
@@ -54,34 +52,7 @@ function getGeminiClient(): GoogleGenerativeAI {
     return geminiClient;
 }
 
-function getOllamaBaseUrl(): string {
-    return (process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434").trim().replace(/\/$/, "");
-}
 
-function formatOllamaConnectionError(baseUrl: string, error: unknown): Error {
-    const fetchError = error as {
-        message?: string;
-        cause?: {
-            code?: string;
-            address?: string;
-            port?: number;
-        };
-    };
-
-    const code = fetchError?.cause?.code || "UNKNOWN";
-    const address = fetchError?.cause?.address || "n/a";
-    const port = fetchError?.cause?.port || "n/a";
-    const detail = fetchError?.message || String(error);
-
-    return new Error(
-        `Cannot reach Ollama at ${baseUrl}. ` +
-        `Cause=${code} (${address}:${port}). ` +
-        `If backend runs in Docker and Ollama runs on host, keep OLLAMA_BASE_URL=http://host.docker.internal:11434 ` +
-        `and start Ollama with OLLAMA_HOST=0.0.0.0:11434. ` +
-        `Quick check from backend container: curl http://host.docker.internal:11434/api/tags. ` +
-        `Original error: ${detail}`
-    );
-}
 
 async function generateWithGemini(modelName: string, input: GenerateAiTextInput): Promise<string> {
     const model = getGeminiClient().getGenerativeModel({
@@ -154,53 +125,7 @@ async function generateWithOpenAI(modelName: string, input: GenerateAiTextInput)
     return content;
 }
 
-async function generateWithOllama(modelName: string, input: GenerateAiTextInput): Promise<string> {
-    const baseUrl = getOllamaBaseUrl();
-    let response: Response;
-    console.log("Ollama activated")
-    try {
-        response = await fetch(`${baseUrl}/api/chat`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                model: modelName,
-                stream: false,
-                messages: [
-                    { role: "system", content: input.systemInstruction },
-                    { role: "user", content: input.prompt }
-                ],
-                options: {
-                    temperature: 0
-                }
-            })
-        });
-    } catch (error) {
-        throw formatOllamaConnectionError(baseUrl, error);
-    }
 
-    if (!response.ok) {
-        const errorBody = await response.text();
-        const modelHint = response.status === 404
-            ? ` Model '${modelName}' may be missing. Run: ollama pull ${modelName}`
-            : "";
-        throw new Error(`Ollama request failed (${response.status}) at ${baseUrl}: ${errorBody}.${modelHint}`);
-    }
-
-    const payload = await response.json() as {
-        message?: {
-            content?: string;
-        };
-    };
-
-    const content = payload.message?.content;
-    if (!content || typeof content !== "string") {
-        throw new Error("Ollama response did not contain text content.");
-    }
-
-    return content;
-}
 
 export async function generateAiText(input: GenerateAiTextInput): Promise<string> {
     const provider = getAiProvider();
@@ -210,11 +135,7 @@ export async function generateAiText(input: GenerateAiTextInput): Promise<string
         return generateWithGemini(modelName, input);
     }
 
-    if (provider === "openai") {
-        return generateWithOpenAI(modelName, input);
-    }
-
-    return generateWithOllama(modelName, input);
+    return generateWithOpenAI(modelName, input);
 }
 
 export function getAiRuntimeConfig() {
@@ -223,13 +144,6 @@ export function getAiRuntimeConfig() {
         provider,
         model: getModelName(provider)
     };
-
-    if (provider === "ollama") {
-        return {
-            ...config,
-            baseUrl: getOllamaBaseUrl()
-        };
-    }
 
     return config;
 }
